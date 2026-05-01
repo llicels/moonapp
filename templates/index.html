@@ -258,6 +258,7 @@
         let overtimeSeconds = 0;
         let totalMinutes = 0;
         let sessionSaved = false;
+        let savedSessionId = null;
 
         const timerDisplay = document.getElementById('timer');
         const overtimeDisplay = document.getElementById('overtimeDisplay');
@@ -351,15 +352,13 @@
             }
         }
 
-        async function saveSession(duration) {
-            try {
-                await fetch('/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ duration })
-                });
-                await fetchStats();
-            } catch (err) {
+        async function saveSession(duration, sessionId = null) {
+            const res = await fetch('/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ duration, session_id: sessionId })
+            });
+            if (!res.ok) {
                 const offline = JSON.parse(localStorage.getItem("offlineSessions") || "[]");
                 offline.push({
                     duration: duration,
@@ -367,6 +366,10 @@
                 });
                 localStorage.setItem("offlineSessions", JSON.stringify(offline));
                 console.log("Saved session offline");
+            } else {
+                const data = await res.json();
+                savedSessionId = data.session_id;
+                await fetchStats();
             }
         }
 
@@ -398,6 +401,11 @@
                     overtimeSeconds = 0;
                     overtimeDisplay.textContent = '+00:00';
                     
+                    if (!sessionSaved) {
+                        saveSession(selectedDuration);
+                        sessionSaved = true;
+                    }
+                    
                     if ("Notification" in window && Notification.permission === "granted") {
                         new Notification("Session complete", {
                             body: "Your study session is done."
@@ -427,6 +435,8 @@
             updateTimerDisplay();
             startBtn.textContent = 'Start';
             durationSelect.disabled = false;
+            sessionSaved = false;
+            savedSessionId = null;
             disableWakeLock();
         }
 
@@ -436,10 +446,12 @@
                 : selectedDuration * 60;
             const durationMinutes = Math.ceil(totalSeconds / 60);
             
-            if (!sessionSaved) {
+            if (sessionSaved && savedSessionId) {
+                await saveSession(durationMinutes, savedSessionId);
+            } else {
                 await saveSession(durationMinutes);
-                sessionSaved = true;
             }
+            sessionSaved = true;
             
             isOvertime = false;
             overtimeSeconds = 0;

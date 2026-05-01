@@ -45,18 +45,29 @@ def weekly():
 def save_session():
     data = request.get_json()
     duration = data.get('duration', 25)
+    session_id = data.get('session_id')
     today = date.today().isoformat()
     now = datetime.now(tz).isoformat()
     
     conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        'INSERT INTO sessions (date, duration, created_at) VALUES (?, ?, ?)',
-        (today, duration, now)
-    )
+    
+    if session_id:
+        conn.execute(
+            'UPDATE sessions SET duration = ? WHERE id = ?',
+            (duration, session_id)
+        )
+        session_id = session_id
+    else:
+        cursor = conn.execute(
+            'INSERT INTO sessions (date, duration, created_at) VALUES (?, ?, ?)',
+            (today, duration, now)
+        )
+        session_id = cursor.lastrowid
+    
     conn.commit()
     conn.close()
     
-    return jsonify({'status': 'saved'})
+    return jsonify({'status': 'saved', 'session_id': session_id})
 
 @app.route('/stats', methods=['GET'])
 def get_stats():

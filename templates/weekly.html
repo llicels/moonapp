@@ -59,7 +59,7 @@
                 
                 const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                 const labels = data.map(d => {
-                    const date = new Date(d.date + 'T00:00:00');
+                    const date = new Date(d.date + 'T12:00:00-03:00');
                     return days[date.getDay()];
                 });
                 const minutes = data.map(d => d.minutes);
