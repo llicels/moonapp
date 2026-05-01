@@ -10,3 +10,4 @@ pluggy==1.6.0
 Pygments==2.20.0
 pytest==9.0.3
 Werkzeug==3.1.8
+gunicorn==21.2.0
