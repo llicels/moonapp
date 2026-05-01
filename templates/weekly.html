@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Stats</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/chart.js" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400&family=Space+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #000000; }
+        .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .star { position: absolute; background: #ffffff; border-radius: 50%; animation: twinkle 4s ease-in-out infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center h-screen overflow-hidden">
+    <div class="stars" id="stars"></div>
+    
+    <div class="relative z-10 w-full max-w-2xl px-6 py-6">
+        <div class="flex justify-between items-center mb-8">
+            <a href="/" class="text-gray-400 hover:text-white text-sm transition-colors">← Back</a>
+            <h1 class="text-white text-2xl font-light">Weekly Stats</h1>
+            <div class="w-12"></div>
+        </div>
+        
+        <div class="bg-black/50 rounded-lg p-6 border border-gray-800">
+            <canvas id="weeklyChart"></canvas>
+        </div>
+        
+        <div class="mt-6 text-center">
+            <span class="text-gray-500 text-sm" id="totalWeek">Total: 0h 0m this week</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Generate stars
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 80; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.width = Math.random() * 2 + 1 + 'px';
+            star.style.height = star.style.width;
+            star.style.animationDelay = Math.random() * 4 + 's';
+            star.style.opacity = Math.random() * 0.5 + 0.2;
+            starsContainer.appendChild(star);
+        }
+
+        async function loadWeeklyStats() {
+            try {
+                const res = await fetch('/weekly-stats');
+                const data = await res.json();
+                
+                const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const labels = data.map(d => {
+                    const date = new Date(d.date + 'T00:00:00');
+                    return days[date.getDay()];
+                });
+                const minutes = data.map(d => d.minutes);
+                
+                const total = minutes.reduce((a, b) => a + b, 0);
+                const hours = Math.floor(total / 60);
+                const mins = total % 60;
+                document.getElementById('totalWeek').textContent = `Total: ${hours}h ${mins}m this week`;
+                
+                const ctx = document.getElementById('weeklyChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Minutes',
+                            data: minutes,
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: { color: '#9ca3af' }
+                            },
+                            y: {
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: { color: '#9ca3af' },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error('Failed to load weekly stats:', err);
+            }
+        }
+
+        loadWeeklyStats();
+    </script>
+</body>
+</html>

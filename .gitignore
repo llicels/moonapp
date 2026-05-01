@@ -1,0 +1,7 @@
+path/to/venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+sessions.db
+.env
+.flaskenv

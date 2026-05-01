@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Study</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400&family=Space+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        body {
+            background: #000000;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .star {
+            position: absolute;
+            background: #ffffff;
+            border-radius: 50%;
+            animation: twinkle 4s ease-in-out infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+        
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+        
+        .moon-img {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 50%;
+            transition: opacity 0.4s ease;
+            box-shadow: 0 0 60px rgba(255,255,255,0.08);
+            animation: breathe 6s ease-in-out infinite, glow 8s ease-in-out infinite;
+            margin-bottom: 0.5rem;
+        }
+        
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.015); }
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 50px rgba(255,255,255,0.06); }
+            50% { box-shadow: 0 0 70px rgba(255,255,255,0.10); }
+        }
+            width: 200px;
+            height: 200px;
+            position: relative;
+        }
+        
+        .moon {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .moon-light {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #f9fafb, #9ca3af);
+            box-shadow: 
+                0 0 40px rgba(255,255,255,0.08),
+                0 0 80px rgba(255,255,255,0.04),
+                inset -15px -15px 30px rgba(0,0,0,0.3);
+        }
+        
+        .moon-shadow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #000000;
+            transition: transform 0.6s ease;
+            transform: translateX(100%);
+        }
+        
+        .moon-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 240px;
+            height: 240px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            z-index: -1;
+            animation: glowPulse 6s ease-in-out infinite;
+        }
+        
+        @keyframes glowPulse {
+            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.05); }
+        }
+        
+        .timer-display {
+            font-family: 'Space Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 400;
+            letter-spacing: 0.1em;
+            color: #e5e7eb;
+            text-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
+        }
+        
+        .btn {
+            padding: 0.5rem 1.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 300;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e5e7eb;
+            cursor: pointer;
+            transition: all 0.4s ease;
+        }
+        
+        .btn:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-primary {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        .session-item {
+            color: #9ca3af;
+            font-size: 0.8rem;
+            transition: color 0.3s ease;
+        }
+        
+        .session-item:hover {
+            color: #e5e7eb;
+        }
+        
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        }
+        
+        @media (max-width: 640px) {
+            .timer-display {
+                font-size: 3rem;
+            }
+            .moon-container {
+                width: 150px;
+                height: 150px;
+            }
+            .moon-glow {
+                width: 180px;
+                height: 180px;
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen overflow-hidden">
+    <div class="stars" id="stars"></div>
+    <div class="noise"></div>
+    
+    <div class="relative z-10 flex flex-col items-center gap-4 w-full max-w-2xl px-6 py-2">
+        
+        <!-- Moon Section -->
+        <div class="flex justify-center items-center mb-8">
+            <img id="moon" src="/static/moon/new.jpg" class="moon-img">
+        </div>
+        
+        <!-- Timer -->
+        <div class="text-center">
+            <div class="timer-display" id="timer">25:00</div>
+            <div id="overtimeDisplay" class="text-gray-500 text-sm font-light mt-2 h-5"></div>
+            
+            <!-- Duration Selector -->
+            <div class="mt-4">
+                <select id="durationSelect" class="bg-transparent border border-gray-700 text-gray-300 text-sm rounded-full px-4 py-2 focus:outline-none focus:border-gray-500">
+                    <option value="10">10 min</option>
+                    <option value="15">15 min</option>
+                    <option value="20">20 min</option>
+                    <option value="25" selected>25 min</option>
+                    <option value="30">30 min</option>
+                    <option value="45">45 min</option>
+                    <option value="60">60 min</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="flex gap-3">
+            <button class="btn btn-primary" id="startBtn">Start</button>
+            <button class="btn" id="pauseBtn">Pause</button>
+            <button class="btn" id="resetBtn">Reset</button>
+            <button class="btn" id="doneBtn">Done</button>
+        </div>
+        
+        <div class="flex gap-3 text-xs">
+            <a href="/weekly" class="text-gray-500 hover:text-gray-300 transition-colors">Weekly</a>
+        </div>
+        
+        <!-- Stats Section -->
+        <div class="w-full max-w-xs">
+            <div class="text-center mb-2">
+                <span class="text-white text-lg font-light" id="totalTime">0h 0m</span>
+                <p class="text-gray-500 text-xs mt-0.5 uppercase tracking-widest">Today</p>
+            </div>
+            
+            <div class="divider my-3"></div>
+            
+            <div id="sessionList" class="space-y-2 text-center min-h-[60px]">
+                <p class="text-gray-600 text-xs">No sessions yet</p>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        // Generate stars
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 100; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.width = Math.random() * 2 + 1 + 'px';
+            star.style.height = star.style.width;
+            star.style.animationDelay = Math.random() * 4 + 's';
+            star.style.opacity = Math.random() * 0.5 + 0.2;
+            starsContainer.appendChild(star);
+        }
+
+        // Timer state
+        let selectedDuration = 25;
+        let timeLeft = 25 * 60;
+        let timerInterval = null;
+        let isRunning = false;
+        let isOvertime = false;
+        let overtimeSeconds = 0;
+        let totalMinutes = 0;
+
+        const timerDisplay = document.getElementById('timer');
+        const overtimeDisplay = document.getElementById('overtimeDisplay');
+        const durationSelect = document.getElementById('durationSelect');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function formatTime(seconds) {
+            const mins = Math.floor(Math.abs(seconds) / 60);
+            const secs = Math.abs(seconds) % 60;
+            if (isOvertime) {
+                return `+${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateTimerDisplay() {
+            if (isOvertime) {
+                timerDisplay.textContent = formatTime(overtimeSeconds);
+                timerDisplay.classList.add('text-red-400');
+            } else {
+                timerDisplay.textContent = formatTime(timeLeft);
+                timerDisplay.classList.remove('text-red-400');
+            }
+        }
+
+        durationSelect.addEventListener('change', function() {
+            if (!isRunning) {
+                selectedDuration = parseInt(this.value);
+                timeLeft = selectedDuration * 60;
+                isOvertime = false;
+                overtimeSeconds = 0;
+                overtimeDisplay.textContent = '';
+                updateTimerDisplay();
+            }
+        });
+
+        function updateMoon(totalMinutes) {
+            const moon = document.getElementById("moon");
+            if (!moon) return;
+            
+            console.log("TOTAL MINUTES:", totalMinutes);
+            
+            let src = "/static/moon/new.jpg";
+            
+            if (totalMinutes >= 60) {
+                src = "/static/moon/full.jpg";
+            } else if (totalMinutes >= 45) {
+                src = "/static/moon/gibbous.jpg";
+            } else if (totalMinutes >= 30) {
+                src = "/static/moon/half.jpg";
+            } else if (totalMinutes >= 15) {
+                src = "/static/moon/crescent.jpg";
+            }
+            
+            moon.src = src;
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/stats');
+                const data = await res.json();
+                
+                totalMinutes = data.total_minutes;
+                const hours = Math.floor(totalMinutes / 60);
+                const mins = totalMinutes % 60;
+                document.getElementById('totalTime').textContent = `${hours}h ${mins}m`;
+                
+                updateMoon(totalMinutes);
+                
+                const sessionList = document.getElementById('sessionList');
+                if (data.sessions.length === 0) {
+                    sessionList.innerHTML = '<p class="text-gray-600 text-sm">No sessions yet</p>';
+                } else {
+                    sessionList.innerHTML = data.sessions.map(s => `
+                        <div class="session-item flex justify-between px-4">
+                            <span>${s.time}</span>
+                            <span>${s.duration} min</span>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error('Failed to fetch stats:', err);
+            }
+        }
+
+        async function saveSession(duration) {
+            try {
+                await fetch('/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ duration })
+                });
+                await fetchStats();
+            } catch (err) {
+                console.error('Failed to save session:', err);
+            }
+        }
+
+        function startTimer() {
+            if (isRunning) return;
+            isRunning = true;
+            updateMoon(0);
+            timerInterval = setInterval(() => {
+                const totalSeconds = selectedDuration * 60;
+                
+                if (isOvertime) {
+                    overtimeSeconds++;
+                    overtimeDisplay.textContent = formatTime(overtimeSeconds);
+                } else {
+                    timeLeft--;
+                }
+                updateTimerDisplay();
+                
+                const elapsedSeconds = isOvertime
+                    ? totalSeconds + overtimeSeconds
+                    : totalSeconds - timeLeft;
+                const sessionMinutes = Math.floor(elapsedSeconds / 60);
+                updateMoon(sessionMinutes);
+                
+                if (!isOvertime && timeLeft <= 0) {
+                    isOvertime = true;
+                    overtimeSeconds = 0;
+                    overtimeDisplay.textContent = '+00:00';
+                    
+                    // save completed session automatically
+                    saveSession(selectedDuration);
+                    
+                    if ("Notification" in window && Notification.permission === "granted") {
+                        new Notification("Session complete", {
+                            body: "Your study session is done."
+                        });
+                    }
+                }
+            }, 1000);
+            startBtn.textContent = 'Running';
+            durationSelect.disabled = true;
+        }
+
+        function pauseTimer() {
+            if (!isRunning) return;
+            clearInterval(timerInterval);
+            isRunning = false;
+            startBtn.textContent = 'Resume';
+        }
+
+        async function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            isOvertime = false;
+            overtimeSeconds = 0;
+            timeLeft = selectedDuration * 60;
+            overtimeDisplay.textContent = '';
+            updateTimerDisplay();
+            startBtn.textContent = 'Start';
+            durationSelect.disabled = false;
+        }
+
+        async function completeSession() {
+            const totalSeconds = isOvertime 
+                ? (selectedDuration * 60) + overtimeSeconds 
+                : selectedDuration * 60;
+            const durationMinutes = Math.ceil(totalSeconds / 60);
+            await saveSession(durationMinutes);
+            
+            isOvertime = false;
+            overtimeSeconds = 0;
+            overtimeDisplay.textContent = '';
+            timeLeft = selectedDuration * 60;
+            updateTimerDisplay();
+            startBtn.textContent = 'Start';
+            durationSelect.disabled = false;
+        }
+
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        
+        document.getElementById('doneBtn').addEventListener('click', function() {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                isRunning = false;
+            }
+            completeSession();
+        });
+
+        // Initial load
+        fetchStats();
+        updateTimerDisplay();
+        
+        if ("Notification" in window && Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+    </script>
+</body>
+</html>
