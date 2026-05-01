@@ -257,6 +257,7 @@
         let isOvertime = false;
         let overtimeSeconds = 0;
         let totalMinutes = 0;
+        let sessionSaved = false;
 
         const timerDisplay = document.getElementById('timer');
         const overtimeDisplay = document.getElementById('overtimeDisplay');
@@ -372,6 +373,7 @@
         function startTimer() {
             if (isRunning) return;
             isRunning = true;
+            sessionSaved = false;
             enableWakeLock();
             updateMoon(0);
             timerInterval = setInterval(() => {
@@ -395,9 +397,6 @@
                     isOvertime = true;
                     overtimeSeconds = 0;
                     overtimeDisplay.textContent = '+00:00';
-                    
-                    // save completed session automatically
-                    saveSession(selectedDuration);
                     
                     if ("Notification" in window && Notification.permission === "granted") {
                         new Notification("Session complete", {
@@ -436,7 +435,11 @@
                 ? (selectedDuration * 60) + overtimeSeconds 
                 : selectedDuration * 60;
             const durationMinutes = Math.ceil(totalSeconds / 60);
-            await saveSession(durationMinutes);
+            
+            if (!sessionSaved) {
+                await saveSession(durationMinutes);
+                sessionSaved = true;
+            }
             
             isOvertime = false;
             overtimeSeconds = 0;
