@@ -55,8 +55,8 @@
         }
         
         .moon-img {
-            width: 200px;
-            height: 200px;
+            width: clamp(140px, 40vw, 220px);
+            height: clamp(140px, 40vw, 220px);
             object-fit: cover;
             border-radius: 50%;
             transition: opacity 0.4s ease;
@@ -131,7 +131,7 @@
         
         .timer-display {
             font-family: 'Space Mono', monospace;
-            font-size: 2.5rem;
+            font-size: clamp(2.5rem, 8vw, 4.5rem);
             font-weight: 400;
             letter-spacing: 0.1em;
             color: #e5e7eb;
@@ -194,12 +194,14 @@
             }
         }
     </style>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
 </head>
-<body class="flex items-center justify-center h-screen overflow-hidden">
+<body class="flex items-center justify-center h-screen overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
     <div class="stars" id="stars"></div>
     <div class="noise"></div>
     
-    <div class="relative z-10 flex flex-col items-center gap-4 w-full max-w-2xl px-6 py-2">
+    <div class="relative z-10 flex flex-col items-center gap-6 sm:gap-8 w-full max-w-2xl px-6 py-2">
         
         <!-- Moon Section -->
         <div class="flex justify-center items-center mb-8">
@@ -254,6 +256,27 @@
     </div>
 
     <script>
+        // Wake Lock
+        let wakeLock = null;
+
+        async function enableWakeLock() {
+            try {
+                wakeLock = await navigator.wakeLock.request("screen");
+            } catch (err) {}
+        }
+
+        function disableWakeLock() {
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+            }
+        }
+
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+
         // Generate stars
         const starsContainer = document.getElementById('stars');
         for (let i = 0; i < 100; i++) {
@@ -372,13 +395,20 @@
                 });
                 await fetchStats();
             } catch (err) {
-                console.error('Failed to save session:', err);
+                const offline = JSON.parse(localStorage.getItem("offlineSessions") || "[]");
+                offline.push({
+                    duration: duration,
+                    timestamp: new Date().toISOString()
+                });
+                localStorage.setItem("offlineSessions", JSON.stringify(offline));
+                console.log("Saved session offline");
             }
         }
 
         function startTimer() {
             if (isRunning) return;
             isRunning = true;
+            enableWakeLock();
             updateMoon(0);
             timerInterval = setInterval(() => {
                 const totalSeconds = selectedDuration * 60;
@@ -420,6 +450,7 @@
             if (!isRunning) return;
             clearInterval(timerInterval);
             isRunning = false;
+            disableWakeLock();
             startBtn.textContent = 'Resume';
         }
 
@@ -433,6 +464,7 @@
             updateTimerDisplay();
             startBtn.textContent = 'Start';
             durationSelect.disabled = false;
+            disableWakeLock();
         }
 
         async function completeSession() {
@@ -466,6 +498,26 @@
         // Initial load
         fetchStats();
         updateTimerDisplay();
+
+        // Sync offline sessions
+        async function syncOfflineSessions() {
+            const offline = JSON.parse(localStorage.getItem("offlineSessions") || "[]");
+            if (offline.length === 0) return;
+            for (const session of offline) {
+                try {
+                    await fetch('/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ duration: session.duration })
+                    });
+                } catch (err) {
+                    break;
+                }
+            }
+            localStorage.removeItem("offlineSessions");
+            await fetchStats();
+        }
+        syncOfflineSessions();
         
         if ("Notification" in window && Notification.permission !== "granted") {
             Notification.requestPermission();
