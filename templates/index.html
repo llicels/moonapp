@@ -118,13 +118,16 @@
         }
         
         @media (max-width: 640px) {
-            .timer-display {
-                font-size: 2.2rem;
-                min-height: 2.5rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
+.timer-display {
+            font-family: 'Space Mono', monospace;
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            color: #e5e7eb;
+            text-shadow: 0 0 30px rgba(255,255,255,0.15);
+            letter-spacing: 0.05em;
+            display: flex;
+            visibility: visible;
+            opacity: 1;
+        }
             .moon-img {
                 width: 100px;
                 height: 100px;
@@ -261,6 +264,12 @@
         const startBtn = document.getElementById('startBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const resetBtn = document.getElementById('resetBtn');
+
+        if (timerDisplay) {
+            timerDisplay.style.display = 'flex';
+            timerDisplay.style.visibility = 'visible';
+            timerDisplay.style.opacity = '1';
+        }
 
         function formatTime(seconds) {
             const mins = Math.floor(Math.abs(seconds) / 60);
