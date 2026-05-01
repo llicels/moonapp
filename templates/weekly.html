@@ -11,23 +11,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400&family=Space+Mono:wght@400&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Inter', sans-serif; }
-        body { background: #000000; }
+        body { background: #000000; height: 100dvh; overflow: hidden; }
         .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
         .star { position: absolute; background: #ffffff; border-radius: 50%; animation: twinkle 4s ease-in-out infinite; }
         @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center h-screen overflow-hidden">
+<body class="flex flex-col items-center justify-center h-[100dvh] overflow-hidden">
     <div class="stars" id="stars"></div>
     
-    <div class="relative z-10 w-full max-w-2xl px-6 py-6">
-        <div class="flex justify-between items-center mb-8">
+    <div class="relative z-10 w-full max-w-2xl px-4 py-4">
+        <div class="flex justify-between items-center mb-4">
             <a href="/" class="text-gray-400 hover:text-white text-sm transition-colors">← Back</a>
-            <h1 class="text-white text-2xl font-light">Weekly Stats</h1>
+            <h1 class="text-white text-xl font-light">Weekly Stats</h1>
             <div class="w-12"></div>
         </div>
         
-        <div class="bg-black/50 rounded-lg p-6 border border-gray-800">
+        <div class="bg-black/50 rounded-lg p-3 sm:p-6 border border-gray-800 h-[50vw] sm:h-[400px] max-h-[50vh]">
             <canvas id="weeklyChart"></canvas>
         </div>
         
