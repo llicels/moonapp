@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
-DB_PATH = os.path.join(os.path.dirname(__file__), 'sessions_new.db')
+DB_PATH = os.path.join(os.path.dirname(__file__), 'sessions_refresh.db')
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
