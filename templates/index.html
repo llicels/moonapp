@@ -259,6 +259,7 @@
         let totalMinutes = 0;
         let sessionSaved = false;
         let savedSessionId = null;
+        let actualElapsedSeconds = 0;
 
         const timerDisplay = document.getElementById('timer');
         const overtimeDisplay = document.getElementById('overtimeDisplay');
@@ -353,6 +354,8 @@
         }
 
         async function saveSession(duration, sessionId = null) {
+            if (duration <= 0) return;
+            
             const res = await fetch('/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -368,7 +371,9 @@
                 console.log("Saved session offline");
             } else {
                 const data = await res.json();
-                savedSessionId = data.session_id;
+                if (!sessionId) {
+                    savedSessionId = data.session_id;
+                }
                 await fetchStats();
             }
         }
@@ -390,10 +395,10 @@
                 }
                 updateTimerDisplay();
                 
-                const elapsedSeconds = isOvertime
+                actualElapsedSeconds = isOvertime
                     ? totalSeconds + overtimeSeconds
                     : totalSeconds - timeLeft;
-                const sessionMinutes = Math.floor(elapsedSeconds / 60);
+                const sessionMinutes = Math.floor(actualElapsedSeconds / 60);
                 updateMoon(sessionMinutes);
                 
                 if (!isOvertime && timeLeft <= 0) {
@@ -402,7 +407,8 @@
                     overtimeDisplay.textContent = '+00:00';
                     
                     if (!sessionSaved) {
-                        saveSession(selectedDuration);
+                        const elapsedMinutes = Math.ceil(actualElapsedSeconds / 60);
+                        saveSession(elapsedMinutes);
                         sessionSaved = true;
                     }
                     
@@ -441,12 +447,14 @@
         }
 
         async function completeSession() {
-            const totalSeconds = isOvertime 
-                ? (selectedDuration * 60) + overtimeSeconds 
-                : selectedDuration * 60;
-            const durationMinutes = Math.ceil(totalSeconds / 60);
+            if (isRunning || actualElapsedSeconds > 0) {
+                clearInterval(timerInterval);
+                isRunning = false;
+            }
             
-            if (sessionSaved && savedSessionId) {
+            const durationMinutes = Math.ceil(actualElapsedSeconds / 60);
+            
+            if (savedSessionId) {
                 await saveSession(durationMinutes, savedSessionId);
             } else {
                 await saveSession(durationMinutes);
@@ -460,6 +468,7 @@
             updateTimerDisplay();
             startBtn.textContent = 'Start';
             durationSelect.disabled = false;
+            actualElapsedSeconds = 0;
         }
 
         startBtn.addEventListener('click', startTimer);

@@ -2,9 +2,6 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 import sqlite3
 from datetime import datetime, date, timedelta
 import os
-import pytz
-
-tz = pytz.timezone("America/Sao_Paulo")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
@@ -47,7 +44,7 @@ def save_session():
     duration = data.get('duration', 25)
     session_id = data.get('session_id')
     today = date.today().isoformat()
-    now = datetime.now(tz).isoformat()
+    now = datetime.now().isoformat()
     
     conn = sqlite3.connect(DB_PATH)
     
