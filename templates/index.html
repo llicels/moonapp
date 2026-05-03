@@ -118,7 +118,7 @@
         }
         
         .timer-display {
-            font-family: 'Space Mono', monospace;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Space Mono', monospace;
             font-size: clamp(2.5rem, 8vw, 4rem);
             color: #e5e7eb;
             text-shadow: 0 0 30px rgba(255,255,255,0.15);
@@ -354,26 +354,51 @@
 
         async function saveSession(duration, sessionId = null) {
             if (duration <= 0) return;
-            
-            const res = await fetch('/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ duration, session_id: sessionId })
-            });
-            if (!res.ok) {
+
+            const isUpdate = sessionId !== null;
+
+            try {
+                const res = await fetch('/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ duration, session_id: sessionId })
+                });
+
+                if (!res.ok) {
+                    const offline = JSON.parse(localStorage.getItem("offlineSessions") || "[]");
+                    offline.push({
+                        duration: duration,
+                        timestamp: new Date().toISOString()
+                    });
+                    localStorage.setItem("offlineSessions", JSON.stringify(offline));
+                    console.log("Saved session offline");
+                    return;
+                }
+
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    console.error("Invalid response type");
+                    throw new Error("Invalid response");
+                }
+
+                const data = await res.json();
+                if (data.status === 'error') {
+                    console.error("Save error:", data.message);
+                    return;
+                }
+
+                if (!isUpdate && data.session_id) {
+                    savedSessionId = data.session_id;
+                }
+                await fetchStats();
+            } catch (err) {
                 const offline = JSON.parse(localStorage.getItem("offlineSessions") || "[]");
                 offline.push({
                     duration: duration,
                     timestamp: new Date().toISOString()
                 });
                 localStorage.setItem("offlineSessions", JSON.stringify(offline));
-                console.log("Saved session offline");
-            } else {
-                const data = await res.json();
-                if (!sessionId) {
-                    savedSessionId = data.session_id;
-                }
-                await fetchStats();
+                console.log("Saved session offline after error");
             }
         }
 
@@ -431,6 +456,9 @@
         }
 
         async function resetTimer() {
+            if (isRunning && !confirm("Timer is running. Reset will discard your current session. Are you sure?")) {
+                return;
+            }
             clearInterval(timerInterval);
             isRunning = false;
             isOvertime = false;
@@ -486,10 +514,11 @@
         fetchStats();
         updateTimerDisplay();
 
-        // Sync offline sessions
+// Sync offline sessions
         async function syncOfflineSessions() {
             const offline = JSON.parse(localStorage.getItem("offlineSessions") || "[]");
             if (offline.length === 0) return;
+
             for (const session of offline) {
                 try {
                     await fetch('/save', {
@@ -504,6 +533,8 @@
             localStorage.removeItem("offlineSessions");
             await fetchStats();
         }
+
+        // Wait for offline sync before fetching stats
         syncOfflineSessions();
         
         if ("Notification" in window && Notification.permission !== "granted") {
