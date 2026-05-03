@@ -120,12 +120,12 @@
         .timer-display {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Space Mono', monospace;
             font-size: clamp(2.5rem, 8vw, 4rem);
-            color: #e5e7eb;
+            color: #e5e7eb !important;
             text-shadow: 0 0 30px rgba(255,255,255,0.15);
             letter-spacing: 0.05em;
-            display: flex;
-            visibility: visible;
-            opacity: 1;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         
         @media (max-width: 640px) {
@@ -142,10 +142,6 @@
             }
             .stats-container {
                 max-width: 160px;
-            }
-            #timer {
-                visibility: visible !important;
-                opacity: 1 !important;
             }
         }
     </style>
