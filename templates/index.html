@@ -117,15 +117,13 @@
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
         }
         
-        .timer-display {
+        #timer {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Space Mono', monospace;
             font-size: clamp(2.5rem, 8vw, 4rem);
-            color: #e5e7eb !important;
+            color: #e5e7eb;
             text-shadow: 0 0 30px rgba(255,255,255,0.15);
             letter-spacing: 0.05em;
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
+            display: block;
         }
         
         @media (max-width: 640px) {
@@ -160,26 +158,25 @@
         </div>
         
         <!-- Timer -->
-        <div class="text-center">
-            <div class="timer-display" id="timer">25:00</div>
-            <div id="overtimeDisplay" class="text-gray-500 text-sm font-light mt-1 sm:mt-2 h-5"></div>
+        <div id="timer" class="text-center" style="color: #e5e7eb; font-size: clamp(2.5rem, 8vw, 4rem);"></div>
             
-            <!-- Duration Selector -->
-            <div class="mt-3 sm:mt-4">
-                <select id="durationSelect" class="bg-transparent border border-gray-700 text-gray-300 text-sm rounded-full px-4 py-2 focus:outline-none focus:border-gray-500">
-                    <option value="10">10 min</option>
-                    <option value="15">15 min</option>
-                    <option value="20">20 min</option>
-                    <option value="25" selected>25 min</option>
-                    <option value="30">30 min</option>
-                    <option value="35">35 min</option>
-                    <option value="40">40 min</option>
-                    <option value="45">45 min</option>
-                    <option value="50">50 min</option>
-                    <option value="55">55 min</option>
-                    <option value="60">60 min</option>
-                </select>
-            </div>
+        <div id="overtimeDisplay" class="text-gray-500 text-sm font-light mt-1 sm:mt-2 h-5"></div>
+        
+        <!-- Duration Selector -->
+        <div class="mt-3 sm:mt-4">
+            <select id="durationSelect" class="bg-transparent border border-gray-700 text-gray-300 text-sm rounded-full px-4 py-2 focus:outline-none focus:border-gray-500">
+                <option value="10">10 min</option>
+                <option value="15">15 min</option>
+                <option value="20">20 min</option>
+                <option value="25" selected>25 min</option>
+                <option value="30">30 min</option>
+                <option value="35">35 min</option>
+                <option value="40">40 min</option>
+                <option value="45">45 min</option>
+                <option value="50">50 min</option>
+                <option value="55">55 min</option>
+                <option value="60">60 min</option>
+            </select>
         </div>
         
         <!-- Controls -->
@@ -402,6 +399,7 @@
             if (isRunning) return;
             isRunning = true;
             sessionSaved = false;
+            savedSessionId = null;
             enableWakeLock();
             updateMoon(0);
             timerInterval = setInterval(() => {
@@ -509,6 +507,9 @@
         // Initial load
         fetchStats();
         updateTimerDisplay();
+        
+        // Ensure timer displays on load
+        if (timerDisplay) timerDisplay.textContent = formatTime(timeLeft);
 
 // Sync offline sessions
         async function syncOfflineSessions() {
