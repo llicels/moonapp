@@ -3,21 +3,47 @@ import sqlite3
 from datetime import datetime, date, timedelta
 import os
 
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
 DB_PATH = os.path.join(os.path.dirname(__file__), 'sessions.db')
 
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
+
+def get_db_connection():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA journal_mode=WAL')
+        return conn
+    except sqlite3.Error as e:
+        logger.error(f"Database connection error: {e}")
+        raise
+
 def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date TEXT NOT NULL,
-                duration INTEGER NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        ''')
-        conn.commit()
+    try:
+        with get_db_connection() as conn:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT NOT NULL,
+                    duration INTEGER NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            ''')
+            conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database initialization error: {e}")
 
 init_db()
 
@@ -49,7 +75,7 @@ def save_session():
         if not isinstance(duration, int) or duration <= 0:
             return jsonify({'status': 'error', 'message': 'invalid_duration'}), 400
 
-        with sqlite3.connect(DB_PATH) as conn:
+        with get_db_connection() as conn:
             if session_id:
                 cursor = conn.execute(
                     'UPDATE sessions SET duration = ? WHERE id = ?',
@@ -57,7 +83,6 @@ def save_session():
                 )
                 if cursor.rowcount == 0:
                     return jsonify({'status': 'error', 'message': 'session_not_found'}), 404
-                session_id = session_id
             else:
                 cursor = conn.execute(
                     'INSERT INTO sessions (date, duration, created_at) VALUES (?, ?, ?)',
@@ -80,9 +105,7 @@ def get_stats():
     today = date.today().isoformat()
 
     try:
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.row_factory = sqlite3.Row
-
+        with get_db_connection() as conn:
             sessions = conn.execute(
                 'SELECT * FROM sessions WHERE date = ? ORDER BY created_at DESC',
                 (today,)
@@ -109,28 +132,31 @@ def get_stats():
 @app.route('/weekly-stats', methods=['GET'])
 def get_weekly_stats():
     try:
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.row_factory = sqlite3.Row
-
+        with get_db_connection() as conn:
             today = date.today()
-            week_dates = [(today - timedelta(days=i)).isoformat() for i in range(6, -1, -1)]
+            start_date = (today - timedelta(days=6)).isoformat()
+            end_date = today.isoformat()
+
+            rows = conn.execute(
+                'SELECT date, SUM(duration) as total FROM sessions WHERE date BETWEEN ? AND ? GROUP BY date',
+                (start_date, end_date)
+            ).fetchall()
+
+            stats_map = {row['date']: row['total'] for row in rows}
 
             result = []
-            for d in week_dates:
-                sessions = conn.execute(
-                    'SELECT SUM(duration) as total FROM sessions WHERE date = ?',
-                    (d,)
-                ).fetchone()
-                minutes = sessions['total'] if sessions['total'] else 0
+            for i in range(6, -1, -1):
+                d = (today - timedelta(days=i)).isoformat()
                 result.append({
                     'date': d,
-                    'minutes': minutes
+                    'minutes': stats_map.get(d, 0)
                 })
 
             return jsonify(result)
 
     except sqlite3.OperationalError:
-        return jsonify([{'date': d.isoformat(), 'minutes': 0} for d in [(date.today() - timedelta(days=i)) for i in range(6, -1, -1)]]), 200
+        today = date.today()
+        return jsonify([{'date': (today - timedelta(days=i)).isoformat(), 'minutes': 0} for i in range(6, -1, -1)]), 200
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

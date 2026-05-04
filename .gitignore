@@ -1,7 +1,9 @@
-path/to/venv/
+venv/
 __pycache__/
 *.pyc
 .pytest_cache/
 sessions.db
+*.db-shm
+*.db-wal
 .env
 .flaskenv

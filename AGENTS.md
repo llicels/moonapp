@@ -16,7 +16,7 @@ pytest
 
 - **Entry point**: `app.py` runs the Flask app
 - **Production**: Uses `gunicorn --bind 0.0.0.0:$PORT app:app` (see Procfile)
-- **Database**: SQLite at `sessions_refresh.db` (note: `sessions.db` is gitignored)
+- **Database**: SQLite at `sessions.db` (note: this file is gitignored)
 - **Test database**: Tests create temporary databases via `test_db` fixture
 
 ## Routes

@@ -2,104 +2,34 @@ import pytest
 import sqlite3
 import os
 import tempfile
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+from app import app as flask_app
 
-# Create a temporary database for testing
 @pytest.fixture
-def test_db():
-    fd, path = tempfile.mkstemp(suffix='.db')
+def client(monkeypatch):
+    # Create a temporary database file
+    fd, db_path = tempfile.mkstemp(suffix='.db')
     os.close(fd)
     
-    conn = sqlite3.connect(path)
-    conn.execute('''
-        CREATE TABLE sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            duration INTEGER NOT NULL,
-            created_at TEXT NOT NULL
-        )
-    ''')
-    conn.commit()
+    # Monkeypatch the DB_PATH in the app module
+    import app
+    monkeypatch.setattr(app, "DB_PATH", db_path)
     
-    yield path
+    # Initialize the database
+    app.init_db()
     
-    os.unlink(path)
+    flask_app.config['TESTING'] = True
+    with flask_app.test_client() as client:
+        yield client
+    
+    # Cleanup
+    if os.path.exists(db_path):
+        os.unlink(db_path)
+    for suffix in ['-shm', '-wal']:
+        if os.path.exists(db_path + suffix):
+            os.unlink(db_path + suffix)
 
-@pytest.fixture
-def app(test_db):
-    from flask import Flask
-    from app import app as flask_app
-    
-    # We need to patch the DB_PATH to use test db
-    original_db_path = flask_app.config.get('DB_PATH', '/some/path')
-    
-    # Create a test app with the test db
-    test_app = Flask(__name__)
-    test_app.config['TESTING'] = True
-    test_app.config['DB_PATH'] = test_db
-    
-    # Copy routes from original app
-    @test_app.route('/')
-    def index():
-        from flask import render_template
-        return render_template('index.html')
-    
-    @test_app.route('/save', methods=['POST'])
-    def save_session():
-        from flask import request, jsonify
-        data = request.get_json()
-        duration = data.get('duration', 25)
-        today = date.today().isoformat()
-        now = datetime.now().isoformat()
-        
-        conn = sqlite3.connect(test_db)
-        conn.execute(
-            'INSERT INTO sessions (date, duration, created_at) VALUES (?, ?, ?)',
-            (today, duration, now)
-        )
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'status': 'saved'})
-    
-    @test_app.route('/stats', methods=['GET'])
-    def get_stats():
-        from flask import jsonify
-        today = date.today().isoformat()
-        
-        conn = sqlite3.connect(test_db)
-        conn.row_factory = sqlite3.Row
-        
-        sessions = conn.execute(
-            'SELECT * FROM sessions WHERE date = ? ORDER BY created_at DESC',
-            (today,)
-        ).fetchall()
-        
-        total_minutes = sum(row['duration'] for row in sessions)
-        
-        session_list = []
-        for row in sessions:
-            created = datetime.fromisoformat(row['created_at'])
-            session_list.append({
-                'time': created.strftime('%H:%M'),
-                'duration': row['duration']
-            })
-        
-        conn.close()
-        
-        return jsonify({
-            'total_minutes': total_minutes,
-            'sessions': session_list
-        })
-    
-    yield test_app
-
-@pytest.fixture
-def client(app):
-    return app.test_client()
-
-
-def test_single_session_save(client, test_db):
+def test_single_session_save(client):
     response = client.post('/save', json={'duration': 25})
     assert response.status_code == 200
     assert response.json['status'] == 'saved'
@@ -109,8 +39,7 @@ def test_single_session_save(client, test_db):
     assert data['total_minutes'] == 25
     assert len(data['sessions']) == 1
 
-
-def test_multiple_sessions_same_day(client, test_db):
+def test_multiple_sessions_same_day(client):
     client.post('/save', json={'duration': 25})
     client.post('/save', json={'duration': 30})
     client.post('/save', json={'duration': 45})
@@ -120,33 +49,80 @@ def test_multiple_sessions_same_day(client, test_db):
     assert data['total_minutes'] == 100
     assert len(data['sessions']) == 3
 
-
-def test_multiple_one_hour_sessions(client, test_db):
-    # Save 3 sessions of 60 minutes each
-    client.post('/save', json={'duration': 60})
-    client.post('/save', json={'duration': 60})
-    client.post('/save', json={'duration': 60})
+def test_invalid_duration(client):
+    response = client.post('/save', json={'duration': 0})
+    assert response.status_code == 400
     
-    response = client.get('/stats')
-    data = response.json
-    # Should total 180 minutes (3 hours)
-    assert data['total_minutes'] == 180
-    assert len(data['sessions']) == 3
+    response = client.post('/save', json={'duration': -5})
+    assert response.status_code == 400
 
-
-def test_mixed_durations(client, test_db):
-    durations = [10, 15, 20, 25, 30, 45, 60]
-    for d in durations:
-        client.post('/save', json={'duration': d})
+def test_weekly_stats(client):
+    # Save sessions for today and yesterday
+    today = date.today().isoformat()
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
     
-    response = client.get('/stats')
+    # We need to manually insert into DB to simulate different dates
+    import app
+    with app.get_db_connection() as conn:
+        conn.execute('INSERT INTO sessions (date, duration, created_at) VALUES (?, ?, ?)',
+                     (today, 30, datetime.now().isoformat()))
+        conn.execute('INSERT INTO sessions (date, duration, created_at) VALUES (?, ?, ?)',
+                     (yesterday, 45, (datetime.now() - timedelta(days=1)).isoformat()))
+        conn.commit()
+    
+    response = client.get('/weekly-stats')
+    assert response.status_code == 200
     data = response.json
-    assert data['total_minutes'] == sum(durations)
-    assert len(data['sessions']) == 7
+    assert len(data) == 7
+    
+    # Check today's stats (last element)
+    assert data[-1]['minutes'] == 30
+    # Check yesterday's stats (second to last element)
+    assert data[-2]['minutes'] == 45
 
-
-def test_empty_database(client, test_db):
+def test_empty_database(client):
     response = client.get('/stats')
     data = response.json
     assert data['total_minutes'] == 0
     assert len(data['sessions']) == 0
+    
+    response = client.get('/weekly-stats')
+    data = response.json
+    assert len(data) == 7
+    for day in data:
+        assert day['minutes'] == 0
+
+def test_session_update(client):
+    # Create a session
+    response = client.post('/save', json={'duration': 25})
+    session_id = response.json['session_id']
+    
+    # Update the same session
+    response = client.post('/save', json={'duration': 40, 'session_id': session_id})
+    assert response.status_code == 200
+    assert response.json['status'] == 'saved'
+    
+    # Verify total minutes is now 40, not 25+40
+    response = client.get('/stats')
+    assert response.json['total_minutes'] == 40
+    assert len(response.json['sessions']) == 1
+
+def test_stats_only_for_today(client):
+    today = date.today().isoformat()
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    
+    import app
+    with app.get_db_connection() as conn:
+        # Session from yesterday
+        conn.execute('INSERT INTO sessions (date, duration, created_at) VALUES (?, ?, ?)',
+                     (yesterday, 60, (datetime.now() - timedelta(days=1)).isoformat()))
+        # Session from today
+        conn.execute('INSERT INTO sessions (date, duration, created_at) VALUES (?, ?, ?)',
+                     (today, 30, datetime.now().isoformat()))
+        conn.commit()
+    
+    # Verify today's stats only show today's 30 mins
+    response = client.get('/stats')
+    assert response.json['total_minutes'] == 30
+    assert len(response.json['sessions']) == 1
+    assert response.json['sessions'][0]['duration'] == 30
